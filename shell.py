@@ -1,11 +1,26 @@
-import art, csv, configparser, subprocess, sys, time, keyboard
+import csv
+import subprocess
+import sys
+import time
+from pathlib import Path
+
+import art
+import configparser
+import keyboard
 from rich.console import Console
 from rich.table import Table
 from rich.progress import track
 # for i in track(range(100)):
-#     sleep(0.1)
+#     sleep(0.1)  # デモ用
+
+
+BASE_DIR = Path(__file__).resolve().parent
+CONFIG_PATH = BASE_DIR / "config.ini"
+MAIN_PATH = BASE_DIR / "main.py"
+
 
 config = configparser.ConfigParser()
+config.read(CONFIG_PATH, encoding="utf-8")
 
 
 item = ["窒素", "酸素", "二酸化炭素", "水", "有機物", "無機物",
@@ -102,12 +117,29 @@ Earthquake = {
     "pollution" : 0.0,
 }
 
-Hazards = { 
+Hazards = {
             "Drought": Drought,
             "Flood": Flood,
             "Wildfire": Wildfire,
             "Earthquake": Earthquake
         }
+
+def _load_hazard_defaults():
+    for hazard_name, values in Hazards.items():
+        if hazard_name not in config:
+            continue
+        section = config[hazard_name]
+        for key in values:
+            if key in section:
+                try:
+                    values[key] = float(section[key])
+                except ValueError:
+                    # 不正値は既存のデフォルトを維持する
+                    pass
+
+
+_load_hazard_defaults()
+
 
 console = Console()
 ascii_art = art.text2art("Ecosystem   Simulator")
@@ -120,34 +152,56 @@ def make_savefile(text: str = ""):
     #     sleep(0.01)  # デモ用
     return "セーブファイルを作成しました。続いて設定を行うには'setup()'を実行してください。"
 
-def setting(H, HJ, default):
+def setting(hazard_key, hazard_label, use_default):
+    if use_default:
+        print(f"{hazard_label}の設定をすべてデフォルトで設定しました。")
+        return
 
-    if default == 1:
-        print(f"{HJ}の設定をすべてデフォルトで設定しました。")
+    print("\n必ずfloat型で入力してください。不正な値を入力した場合はデフォルト値になります。")
+    print("デフォルトでよい場合は何も打ち込まずにエンターを押してください。")
+    for resource in item:
+        current = Hazards[hazard_key][resource]
+        raw = input(f"{hazard_label}(default={current}): ")
+        if not raw.strip():
+            continue
+        try:
+            Hazards[hazard_key][resource] = float(raw)
+        except ValueError:
+            print("不正な値が入力されたため、デフォルト値を維持します。")
 
-    else:
-        print("\n必ずfloat型で入力してください。不正な値を入力した場合はデフォルト値になります。")
-        print("デフォルトでよい場合は何も打ち込まずにエンターを押してください。")
-        for i in item:
-            # try:
-            Hazards[H][i] = float(input(f"{HJ}(default={Hazards[H][i]}): "))
-            # except:
-                # pass
+
+def _write_hazard_config():
+    config.read(CONFIG_PATH, encoding="utf-8")
+    for hazard_name, values in Hazards.items():
+        if hazard_name not in config:
+            config[hazard_name] = {}
+        for key, value in values.items():
+            config[hazard_name][key] = str(value)
+    with CONFIG_PATH.open('w', encoding='utf-8') as configfile:
+        config.write(configfile)
     
 def setup():
     print("災害の一日あたりの影響を設定を行います。")
-    default = input("初めに、干ばつの影響を設定します。すべてデフォルトでよい場合は1を打ちエンターを、カスタムする場合は0を打ちエンターを押してください。: ")
-    setting("Drought", "干ばつ", default)
+    config.read(CONFIG_PATH, encoding="utf-8")
+    _load_hazard_defaults()
 
-    default = input("次に、洪水の影響を設定します。すべてデフォルトでよい場合は1を打ちエンターを、カスタムする場合は0を打ちエンターを押してください。: ")
-    setting("Flood", "洪水", default)
+    prompts = (
+        ("Drought", "干ばつ"),
+        ("Flood", "洪水"),
+        ("Wildfire", "山火事"),
+        ("Earthquake", "地震"),
+    )
 
-    default = input("次に、山火事の影響を設定します。すべてデフォルトでよい場合は1を打ちエンターを、カスタムする場合は0を打ちエンターを押してください。: ")
-    setting("Wildfire", "山火事", default)
+    for idx, (key, label) in enumerate(prompts):
+        prefix = "初めに" if idx == 0 else "次に"
+        default = input(
+            f"{prefix}、{label}の影響を設定します。すべてデフォルトでよい場合は1を打ちエンターを、"
+            "カスタムする場合は0を打ちエンターを押してください。: "
+        ).strip()
+        use_default = default == "1"
+        setting(key, label, use_default)
 
-    default = input("次に、地震の影響を設定します。すべてデフォルトでよい場合は1を打ちエンターを、カスタムする場合は0を打ちエンターを押してください。: ")
-    setting("Earthquake", "地震", default)
-
+    _write_hazard_config()
     print("設定が完了しました。")
 
 RED = '\033[31m'
@@ -180,9 +234,9 @@ def check():
         sys.stdout.flush()
     print("コンパクトモードで設定しました" if mode else "通常モードで設定しました")
 
-    config.read("config.ini", encoding="utf-8")
+    config.read(CONFIG_PATH, encoding="utf-8")
     config["Simulator"]["compact"] = str(mode)
-    with open("config.ini", 'w', encoding='utf-8') as configfile:
+    with CONFIG_PATH.open('w', encoding='utf-8') as configfile:
         config.write(configfile)
 
 def help():
@@ -208,13 +262,13 @@ def quit():
     exit()
 
 def start():
-    from os import path
-    import subprocess
-
-    #パターン1 .batファイルを呼び出す
-    runPath = path.join(path.dirname(__file__), 'run.bat')
-    subprocess.Popen(runPath)
-    # subprocess.Popen([sys.executable, "main.py"]); sys.exit()
+    command = [sys.executable, str(MAIN_PATH)]
+    try:
+        subprocess.Popen(command)
+    except FileNotFoundError:
+        print("Pythonの実行ファイルが見つかりませんでした。環境を確認してください。")
+    else:
+        print("メインシミュレーションを別プロセスで起動しました。")
     
 
 def Shell(banner='', namespace={}):

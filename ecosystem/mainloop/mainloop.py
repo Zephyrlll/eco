@@ -1,11 +1,22 @@
-import time, psutil, keyboard, subprocess, sys
+import time
+import psutil
+import keyboard
+import subprocess
+import sys
+from pathlib import Path
+
 from ..display.display import display_atmosphere, display_hardware, display_kids, display_status
 from ..other.other import save, autosave_tick, csv_log
 
 import configparser
+
+
+CONFIG_PATH = Path(__file__).resolve().parents[2] / "config.ini"
+
+
 config = configparser.ConfigParser()
-config.read(r"C:\Users\admin\Documents\生態系\ecosystem_simulator\config.ini", encoding="utf-8")
-compactmode = config["Simulator"]["compact"]
+config.read(CONFIG_PATH, encoding="utf-8")
+compactmode = config["Simulator"].get("compact", "0")
 
 if compactmode == "1":
     from ..display.display_compact import display_status_ecology, display_status_other, display_atmosphere, display_hardware

@@ -1,7 +1,18 @@
+from pathlib import Path
+import configparser
+
+
+CONFIG_PATH = Path(__file__).resolve().parents[4] / "config.ini"
+
+
+def _load_config():
+    parser = configparser.ConfigParser()
+    parser.read(CONFIG_PATH, encoding="utf-8")
+    return parser
+
+
 class Hazard:
-    import configparser
-    config = configparser.ConfigParser()
-    config.read(r"C:\Users\admin\Documents\生態系\ecosystem_simulator\config.ini", encoding="utf-8")
+    _config = _load_config()
 
     # 影響日数
     def __init__(self, days=1, name="Hazard"):
@@ -19,7 +30,8 @@ class Hazard:
 class Drought(Hazard): # 干ばつ
     def __init__(self, days=10, config=None):
         super().__init__(days, name="干ばつ")
-        self.config = config["Drought"]
+        parser = config or _load_config()
+        self.config = parser["Drought"]
 
     def effect(self):
         return (
@@ -31,7 +43,8 @@ class Drought(Hazard): # 干ばつ
 class Flood(Hazard): # 洪水
     def __init__(self, days=10, config=None):
         super().__init__(days, name="洪水")
-        self.config = config["Flood"]
+        parser = config or _load_config()
+        self.config = parser["Flood"]
 
     def effect(self):
         return (
@@ -43,7 +56,8 @@ class Flood(Hazard): # 洪水
 class Wildfire(Hazard): # 山火事
     def __init__(self, days=10, config=None):
         super().__init__(days, name="山火事")
-        self.config = config["Wildfire"]
+        parser = config or _load_config()
+        self.config = parser["Wildfire"]
 
     def effect(self):
         return (
@@ -55,7 +69,8 @@ class Wildfire(Hazard): # 山火事
 class Earthquake(Hazard): # 地震
     def __init__(self, days=10, config=None):
         super().__init__(days, name="地震")
-        self.config = config["Earthquake"]
+        parser = config or _load_config()
+        self.config = parser["Earthquake"]
 
     def effect(self):
         return (
