@@ -8,6 +8,10 @@ from ..earth.earth import EarthCondition
 # from ..other.other import autosave_tick, csv_log, save
 
 import string, configparser
+from pathlib import Path
+
+
+CONFIG_PATH = Path(__file__).resolve().parents[2] / "config.ini"
 
 s = Composer.the_beginning_of_ecology
 b = Composer.the_second_stage
@@ -35,7 +39,7 @@ class Ecosystem:
     '''
     def __init__(self, earth_status, society):
         config = configparser.ConfigParser()
-        config.read(r"C:\Users\admin\Documents\生態系\ecosystem_simulator\config.ini", encoding="utf-8")
+        config.read(CONFIG_PATH, encoding="utf-8")
         self.config = config["OptimalEarthCondition"]
         '''
         # デフォルトステータス
